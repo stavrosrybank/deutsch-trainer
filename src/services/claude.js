@@ -1,6 +1,5 @@
 // claude.js — Anthropic API client for Deutsch Trainer
 
-const API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-6';
 
 const ANALYSIS_SYSTEM_PROMPT = `You are an encouraging German language teacher reviewing a student's written German.
@@ -45,15 +44,13 @@ Write a short, encouraging paragraph (3–5 sentences) directly addressing the l
 Do NOT return JSON. Return plain text only.`;
 
 async function callClaude(apiKey, systemPrompt, userContent) {
-  const response = await fetch(API_URL, {
+  const response = await fetch('/api/claude', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-allow-browser': 'true',
     },
     body: JSON.stringify({
+      apiKey,
       model: MODEL,
       max_tokens: 1024,
       system: systemPrompt,
