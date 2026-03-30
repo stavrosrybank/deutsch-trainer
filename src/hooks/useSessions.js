@@ -2,20 +2,22 @@ import { useState, useEffect, useCallback } from 'react';
 import { getSessions, saveSession } from '../services/storage';
 
 export function useSessions() {
-  const [sessions, setSessions] = useState(() => getSessions());
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => setSessions(getSessions()), []);
-
-  useEffect(() => {
-    window.addEventListener('dt:session-saved', refresh);
-    return () => window.removeEventListener('dt:session-saved', refresh);
-  }, [refresh]);
-
-  const addSession = useCallback((session) => {
-    saveSession(session);
-    setSessions(getSessions());
-    window.dispatchEvent(new Event('dt:session-saved'));
+  const refresh = useCallback(async () => {
+    const data = await getSessions();
+    setSessions(data);
   }, []);
 
-  return { sessions, addSession };
+  useEffect(() => {
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
+
+  const addSession = useCallback(async (session) => {
+    await saveSession(session);
+    setSessions(await getSessions());
+  }, []);
+
+  return { sessions, loading, addSession };
 }

@@ -1,17 +1,16 @@
 import { useMemo } from 'react';
-import { getQuizSessions } from '../services/storage';
 
 function getDateString(isoDate) {
   return new Date(isoDate).toLocaleDateString();
 }
 
-export function useProgress(sessions, vocab) {
+// quizSessions passed in from useVocab to avoid a duplicate async call
+export function useProgress(sessions, vocab, quizSessions) {
   return useMemo(() => {
     const sessionCount = sessions.length;
 
     // Streak: consecutive calendar days ending today
     const daySet = new Set(sessions.map((s) => getDateString(s.date)));
-
     let streak = 0;
     let cursor = new Date();
     while (true) {
@@ -41,12 +40,12 @@ export function useProgress(sessions, vocab) {
       if (v.status in vocabByStatus) vocabByStatus[v.status]++;
     });
 
-    const quizSessions = getQuizSessions();
-    const quizCount = quizSessions.length;
-    const totalCorrect = quizSessions.reduce((sum, s) => sum + (s.correctAnswers || 0), 0);
-    const totalAsked = quizSessions.reduce((sum, s) => sum + (s.totalQuestions || 0), 0);
+    const qs = quizSessions || [];
+    const quizCount = qs.length;
+    const totalCorrect = qs.reduce((sum, s) => sum + (s.correctAnswers || 0), 0);
+    const totalAsked = qs.reduce((sum, s) => sum + (s.totalQuestions || 0), 0);
     const quizAccuracy = totalAsked > 0 ? Math.round((totalCorrect / totalAsked) * 100) : null;
 
     return { sessionCount, streak, categoryCounts, vocabTotal, vocabByStatus, quizCount, quizAccuracy };
-  }, [sessions, vocab]);
+  }, [sessions, vocab, quizSessions]);
 }

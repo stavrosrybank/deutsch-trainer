@@ -16,13 +16,13 @@ function getISOWeek(date) {
   return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
 
-export default function Practice({ apiKey }) {
+export default function Practice() {
   const [topic, setTopic] = useState(null);
   const [text, setText] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { sessions, addSession } = useSessions();
+  const { addSession } = useSessions();
 
   const handleSubmit = async () => {
     if (!topic || !text.trim()) return;
@@ -30,7 +30,7 @@ export default function Practice({ apiKey }) {
     setError('');
 
     try {
-      const result = await analyzeWriting(apiKey, topic, text);
+      const result = await analyzeWriting(topic, text);
 
       const now = new Date().toISOString();
       const sessionId = uuid();
@@ -42,9 +42,8 @@ export default function Practice({ apiKey }) {
         analysis: result,
       };
 
-      addSession(session);
+      await addSession(session);
 
-      // Denormalize corrections into phrase log
       if (result.corrections?.length) {
         const month = now.slice(0, 7);
         const week = getISOWeek(now);
@@ -61,15 +60,15 @@ export default function Practice({ apiKey }) {
           category: c.category,
           learned: false,
         }));
-        savePhrases(phrases);
+        await savePhrases(phrases);
       }
 
       // Trigger pattern report every 5 sessions
-      const allSessions = getSessions();
+      const allSessions = await getSessions();
       if (allSessions.length % 5 === 0 && allSessions.length > 0) {
         const last5 = allSessions.slice(-5);
-        const report = await generatePatternReport(apiKey, last5);
-        savePatternReport({
+        const report = await generatePatternReport(last5);
+        await savePatternReport({
           id: uuid(),
           date: now,
           sessionIds: last5.map((s) => s.id),

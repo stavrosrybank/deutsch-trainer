@@ -12,7 +12,7 @@ function pickQuestionType(entry) {
   return available[Math.floor(Math.random() * available.length)];
 }
 
-export default function QuizMode({ apiKey, words, onAnswer, onClose, onSessionEnd }) {
+export default function QuizMode({ words, onAnswer, onClose, onSessionEnd }) {
   const [index, setIndex] = useState(0);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,14 +30,14 @@ export default function QuizMode({ apiKey, words, onAnswer, onClose, onSessionEn
     const word = words[idx];
     const qType = pickQuestionType(word);
     try {
-      const q = await generateQuizQuestion(apiKey, word, qType);
+      const q = await generateQuizQuestion(word, qType);
       setCurrentQuestion({ ...q, wordId: word.id, qType });
     } catch (err) {
       setError(`Fehler beim Laden der Frage: ${err.message}`);
     } finally {
       setLoading(false);
     }
-  }, [apiKey, words]);
+  }, [words]);
 
   useEffect(() => {
     loadQuestion(0);

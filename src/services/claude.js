@@ -1,9 +1,10 @@
 // claude.js — Anthropic API client for Deutsch Trainer
+// API key lives server-side in process.env.ANTHROPIC_API_KEY — never in the browser
 
 const SONNET = 'claude-sonnet-4-6';
 const HAIKU = 'claude-haiku-4-5-20251001';
 
-// ── Existing prompts (unchanged) ──────────────────────────
+// ── Prompts (unchanged) ───────────────────────────────────
 
 const ANALYSIS_SYSTEM_PROMPT = `You are an encouraging German language teacher reviewing a student's written German.
 
@@ -46,8 +47,6 @@ Write a short, encouraging paragraph (3–5 sentences) directly addressing the l
 
 Do NOT return JSON. Return plain text only.`;
 
-// ── Haiku prompts (new) ───────────────────────────────────
-
 const QUICK_ADD_SYSTEM_PROMPT = `You are a German dictionary assistant. Given a German word or phrase, return a JSON object with these fields:
 - english: English translation
 - article: "der", "die", "das", or null if not a noun
@@ -85,12 +84,11 @@ No markdown fences, no extra text.`;
 
 // ── Shared HTTP helper ────────────────────────────────────
 
-async function callClaude(apiKey, model, systemPrompt, userContent, maxTokens = 1024) {
+async function callClaude(model, systemPrompt, userContent, maxTokens = 1024) {
   const response = await fetch('/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      apiKey,
       model,
       max_tokens: maxTokens,
       system: systemPrompt,
@@ -112,19 +110,15 @@ function stripFences(raw) {
   return raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
 }
 
-// ── Existing exports (unchanged) ─────────────────────────
+// ── Exports ───────────────────────────────────────────────
 
-export async function analyzeWriting(apiKey, topic, userText) {
-  const userContent = `Topic: "${topic.topic}" (category: ${topic.category})
-
-Student's text:
-${userText}`;
-
-  const raw = await callClaude(apiKey, SONNET, ANALYSIS_SYSTEM_PROMPT, userContent);
+export async function analyzeWriting(topic, userText) {
+  const userContent = `Topic: "${topic.topic}" (category: ${topic.category})\n\nStudent's text:\n${userText}`;
+  const raw = await callClaude(SONNET, ANALYSIS_SYSTEM_PROMPT, userContent);
   return JSON.parse(stripFences(raw));
 }
 
-export async function generatePatternReport(apiKey, recentSessions) {
+export async function generatePatternReport(recentSessions) {
   const correctionsList = recentSessions
     .flatMap((s) =>
       (s.analysis?.corrections || []).map(
@@ -134,31 +128,22 @@ export async function generatePatternReport(apiKey, recentSessions) {
     .join('\n');
 
   const userContent = `Here are the corrections from the last ${recentSessions.length} sessions:\n\n${correctionsList || '(No corrections recorded)'}`;
-
-  return callClaude(apiKey, SONNET, PATTERN_REPORT_SYSTEM_PROMPT, userContent);
+  return callClaude(SONNET, PATTERN_REPORT_SYSTEM_PROMPT, userContent);
 }
 
-// ── New Haiku exports ─────────────────────────────────────
-
-export async function quickAddLookup(apiKey, germanWord) {
-  const raw = await callClaude(
-    apiKey,
-    HAIKU,
-    QUICK_ADD_SYSTEM_PROMPT,
-    `German word or phrase: "${germanWord}"`,
-    512
-  );
+export async function quickAddLookup(germanWord) {
+  const raw = await callClaude(HAIKU, QUICK_ADD_SYSTEM_PROMPT, `German word or phrase: "${germanWord}"`, 512);
   return JSON.parse(stripFences(raw));
 }
 
-export async function importCleanBatch(apiKey, rawLines) {
+export async function importCleanBatch(rawLines) {
   const userContent = `Clean and enrich these German words/phrases:\n${JSON.stringify(rawLines)}`;
-  const raw = await callClaude(apiKey, HAIKU, IMPORT_CLEAN_SYSTEM_PROMPT, userContent, 4096);
+  const raw = await callClaude(HAIKU, IMPORT_CLEAN_SYSTEM_PROMPT, userContent, 4096);
   return JSON.parse(stripFences(raw));
 }
 
-export async function generateQuizQuestion(apiKey, vocabEntry, questionType) {
+export async function generateQuizQuestion(vocabEntry, questionType) {
   const userContent = `Vocab entry: ${JSON.stringify(vocabEntry)}\nQuestion type: "${questionType}"`;
-  const raw = await callClaude(apiKey, HAIKU, QUIZ_QUESTION_SYSTEM_PROMPT, userContent, 512);
+  const raw = await callClaude(HAIKU, QUIZ_QUESTION_SYSTEM_PROMPT, userContent, 512);
   return JSON.parse(stripFences(raw));
 }

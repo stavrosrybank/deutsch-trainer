@@ -11,7 +11,7 @@ function chunkArray(arr, size) {
   return chunks;
 }
 
-export default function ImportWizard({ apiKey, onImport, onClose, isDuplicate }) {
+export default function ImportWizard({ onImport, onClose, isDuplicate }) {
   const [step, setStep] = useState('paste'); // paste | processing | preview | done
   const [rawText, setRawText] = useState('');
   const [progress, setProgress] = useState({ current: 0, total: 0 });
@@ -40,7 +40,7 @@ export default function ImportWizard({ apiKey, onImport, onClose, isDuplicate })
     for (let i = 0; i < batches.length; i++) {
       setProgress({ current: i + 1, total: batches.length });
       try {
-        const cleaned = await importCleanBatch(apiKey, batches[i]);
+        const cleaned = await importCleanBatch(batches[i]);
         for (const entry of cleaned) {
           const norm = (entry.german || '').toLowerCase().trim();
           if (norm && !seen.has(norm)) {

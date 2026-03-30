@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import QuickAddModal from './vocab/QuickAddModal';
 
-export default function QuickAddButton({ apiKey, onSave, isDuplicate }) {
+export default function QuickAddButton({ onSave, isDuplicate }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -11,7 +11,6 @@ export default function QuickAddButton({ apiKey, onSave, isDuplicate }) {
       </button>
       {open && (
         <QuickAddModal
-          apiKey={apiKey}
           onSave={onSave}
           onClose={() => setOpen(false)}
           isDuplicate={isDuplicate}

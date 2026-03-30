@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
 import {
   getVocab,
-  saveVocab,
   addVocabEntry,
+  insertManyVocabEntries,
   updateVocabEntry,
   deleteVocabEntry,
   getQuizSessions,
@@ -17,15 +17,21 @@ function deriveStatus(correctStreak) {
 }
 
 export function useVocab() {
-  const [vocab, setVocab] = useState(() => getVocab());
-  const [quizSessions, setQuizSessions] = useState(() => getQuizSessions());
+  const [vocab, setVocab] = useState([]);
+  const [quizSessions, setQuizSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => {
-    setVocab(getVocab());
-    setQuizSessions(getQuizSessions());
+  const refreshAll = useCallback(async () => {
+    const [v, qs] = await Promise.all([getVocab(), getQuizSessions()]);
+    setVocab(v);
+    setQuizSessions(qs);
   }, []);
 
-  const addWord = useCallback((fields) => {
+  useEffect(() => {
+    refreshAll().finally(() => setLoading(false));
+  }, [refreshAll]);
+
+  const addWord = useCallback(async (fields) => {
     const streak = fields.correctStreak ?? 0;
     const entry = {
       id: uuid(),
@@ -40,29 +46,27 @@ export function useVocab() {
       status: deriveStatus(streak),
       addedDate: new Date().toISOString(),
     };
-    addVocabEntry(entry);
-    setVocab(getVocab());
+    await addVocabEntry(entry);
+    setVocab(await getVocab());
     return entry;
   }, []);
 
-  const updateWord = useCallback((id, updates) => {
+  const updateWord = useCallback(async (id, updates) => {
     const streak = updates.correctStreak;
     const finalUpdates = streak !== undefined
       ? { ...updates, status: deriveStatus(streak) }
       : updates;
-    updateVocabEntry(id, finalUpdates);
-    setVocab(getVocab());
+    await updateVocabEntry(id, finalUpdates);
+    setVocab(await getVocab());
   }, []);
 
-  const deleteWord = useCallback((id) => {
-    deleteVocabEntry(id);
-    setVocab(getVocab());
+  const deleteWord = useCallback(async (id) => {
+    await deleteVocabEntry(id);
+    setVocab(await getVocab());
   }, []);
 
-  const addManyWords = useCallback((entries) => {
-    const existing = getVocab();
-    const existingNorms = new Set(existing.map((v) => v.german.toLowerCase().trim()));
-
+  const addManyWords = useCallback(async (entries) => {
+    const existingNorms = new Set(vocab.map((v) => v.german.toLowerCase().trim()));
     const toAdd = entries
       .filter((e) => e.german && !existingNorms.has(e.german.toLowerCase().trim()))
       .map((e) => ({
@@ -79,55 +83,42 @@ export function useVocab() {
         addedDate: new Date().toISOString(),
       }));
 
-    saveVocab([...existing, ...toAdd]);
-    setVocab(getVocab());
+    if (toAdd.length) {
+      await insertManyVocabEntries(toAdd);
+      setVocab(await getVocab());
+    }
     return toAdd.length;
-  }, []);
+  }, [vocab]);
 
-  // Returns words weighted by status for quiz selection
+  // Uses in-memory vocab state — no storage call needed
   const getQuizWords = useCallback((count = 10) => {
-    const all = getVocab();
-    if (!all.length) return [];
+    if (!vocab.length) return [];
 
-    const learning = all.filter((v) => v.status === 'learning');
-    const review = all.filter((v) => v.status === 'review');
-    const learned = all.filter((v) => v.status === 'learned');
+    const learning = vocab.filter((v) => v.status === 'learning');
+    const review = vocab.filter((v) => v.status === 'review');
+    const learned = vocab.filter((v) => v.status === 'learned');
 
-    const pool = [];
-    // Fill with learning words first (weight ~60%)
-    pool.push(...learning);
-    // Add review words (~30%)
+    const pool = [...learning];
     if (review.length) pool.push(...review, ...review.slice(0, Math.ceil(review.length * 0.5)));
-    // Rarely add learned words (~10%)
     if (learned.length) pool.push(learned[Math.floor(Math.random() * learned.length)]);
 
-    // Shuffle and dedupe by id, then take count
     const shuffled = pool.sort(() => Math.random() - 0.5);
     const seen = new Set();
     const result = [];
     for (const w of shuffled) {
-      if (!seen.has(w.id)) {
-        seen.add(w.id);
-        result.push(w);
-      }
+      if (!seen.has(w.id)) { seen.add(w.id); result.push(w); }
       if (result.length >= count) break;
     }
-
-    // If not enough, pad with any remaining
     if (result.length < count) {
-      for (const w of all) {
-        if (!seen.has(w.id)) {
-          seen.add(w.id);
-          result.push(w);
-        }
+      for (const w of vocab) {
+        if (!seen.has(w.id)) { seen.add(w.id); result.push(w); }
         if (result.length >= count) break;
       }
     }
-
     return result;
-  }, []);
+  }, [vocab]);
 
-  const recordQuizSession = useCallback((totalQuestions, correctAnswers, wordsQuizzed) => {
+  const recordQuizSession = useCallback(async (totalQuestions, correctAnswers, wordsQuizzed) => {
     const session = {
       id: uuid(),
       date: new Date().toISOString(),
@@ -135,21 +126,21 @@ export function useVocab() {
       correctAnswers,
       wordsQuizzed,
     };
-    saveQuizSession(session);
-    setQuizSessions(getQuizSessions());
+    await saveQuizSession(session);
+    setQuizSessions(await getQuizSessions());
     return session;
   }, []);
 
-  // Duplicate check for import preview
+  // Uses in-memory vocab state
   const isDuplicate = useCallback((germanWord) => {
-    const existing = getVocab();
     const norm = germanWord.toLowerCase().trim();
-    return existing.some((v) => v.german.toLowerCase().trim() === norm);
-  }, []);
+    return vocab.some((v) => v.german.toLowerCase().trim() === norm);
+  }, [vocab]);
 
   return {
     vocab,
     quizSessions,
+    loading,
     addWord,
     updateWord,
     deleteWord,
@@ -157,6 +148,6 @@ export function useVocab() {
     getQuizWords,
     recordQuizSession,
     isDuplicate,
-    refresh,
+    refresh: refreshAll,
   };
 }

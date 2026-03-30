@@ -5,7 +5,7 @@ import ImportWizard from './ImportWizard';
 import QuizMode from './QuizMode';
 import QuickAddModal from './QuickAddModal';
 
-export default function Vocab({ apiKey, vocab, onAddWord, onUpdateWord, onDeleteWord, onAddManyWords, getQuizWords, onSessionEnd, isDuplicate }) {
+export default function Vocab({ vocab, onAddWord, onUpdateWord, onDeleteWord, onAddManyWords, getQuizWords, onSessionEnd, isDuplicate }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -34,7 +34,6 @@ export default function Vocab({ apiKey, vocab, onAddWord, onUpdateWord, onDelete
   if (quizWords) {
     return (
       <QuizMode
-        apiKey={apiKey}
         words={quizWords}
         onAnswer={handleQuizAnswer}
         onClose={() => setQuizWords(null)}
@@ -124,7 +123,6 @@ export default function Vocab({ apiKey, vocab, onAddWord, onUpdateWord, onDelete
 
       {showImport && (
         <ImportWizard
-          apiKey={apiKey}
           onImport={(entries) => onAddManyWords(entries)}
           onClose={() => setShowImport(false)}
           isDuplicate={isDuplicate}
@@ -133,7 +131,6 @@ export default function Vocab({ apiKey, vocab, onAddWord, onUpdateWord, onDelete
 
       {showQuickAdd && (
         <QuickAddModal
-          apiKey={apiKey}
           onSave={(fields) => onAddWord(fields)}
           onClose={() => setShowQuickAdd(false)}
           isDuplicate={isDuplicate}

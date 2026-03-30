@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { quickAddLookup } from '../../services/claude';
 
-export default function QuickAddModal({ apiKey, onSave, onClose, isDuplicate }) {
+export default function QuickAddModal({ onSave, onClose, isDuplicate }) {
   const [word, setWord] = useState('');
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -13,7 +13,7 @@ export default function QuickAddModal({ apiKey, onSave, onClose, isDuplicate }) 
     setLoading(true);
     setError('');
     try {
-      const result = await quickAddLookup(apiKey, word.trim());
+      const result = await quickAddLookup(word.trim());
       setPreview({ german: word.trim(), ...result });
     } catch (err) {
       setError(`Fehler beim Nachschlagen: ${err.message}`);

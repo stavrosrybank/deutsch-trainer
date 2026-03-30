@@ -4,9 +4,9 @@ import CategoryBreakdown from './CategoryBreakdown';
 import VocabStats from './VocabStats';
 import { useProgress } from '../../hooks/useProgress';
 
-export default function Progress({ sessions, vocab }) {
+export default function Progress({ sessions, vocab, quizSessions }) {
   const { sessionCount, streak, categoryCounts, vocabTotal, vocabByStatus, quizCount, quizAccuracy } =
-    useProgress(sessions, vocab);
+    useProgress(sessions, vocab, quizSessions);
 
   return (
     <div className="progress-container">

@@ -1,126 +1,293 @@
-// storage.js — all localStorage CRUD for Deutsch Trainer
+// storage.js — Supabase-backed data layer for Deutsch Trainer
+// All functions are async. camelCase ↔ snake_case translation is handled here.
 
-const KEYS = {
-  SESSIONS: 'dt_sessions',
-  PHRASES: 'dt_phrases',
-  SETTINGS: 'dt_settings',
-  PATTERN_REPORTS: 'dt_pattern_reports',
-  VOCAB: 'dt_vocab',
-  QUIZ_SESSIONS: 'dt_quiz_sessions',
+import { supabase } from './supabase';
+
+// ── Auth helper ───────────────────────────────────────────
+
+async function getUserId() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user.id;
+}
+
+// ── Column mappers ────────────────────────────────────────
+
+const toDb = {
+  session: (s, userId) => ({
+    id: s.id,
+    user_id: userId,
+    date: s.date,
+    topic: s.topic,
+    user_text: s.userText,
+    analysis: s.analysis,
+  }),
+  phrase: (p, userId) => ({
+    id: p.id,
+    user_id: userId,
+    session_id: p.sessionId,
+    date: p.date,
+    topic: p.topic,
+    week: p.week,
+    month: p.month,
+    original: p.original,
+    improved: p.improved,
+    explanation: p.explanation,
+    category: p.category,
+    learned: p.learned ?? false,
+  }),
+  patternReport: (r, userId) => ({
+    id: r.id,
+    user_id: userId,
+    date: r.date,
+    session_ids: r.sessionIds,
+    week: r.week,
+    report: r.report,
+  }),
+  vocab: (v, userId) => ({
+    id: v.id,
+    user_id: userId,
+    german: v.german,
+    english: v.english,
+    article: v.article,
+    plural: v.plural,
+    example: v.example,
+    difficulty: v.difficulty,
+    correct_streak: v.correctStreak ?? 0,
+    last_seen: v.lastSeen ?? null,
+    status: v.status,
+    added_date: v.addedDate,
+  }),
+  quizSession: (s, userId) => ({
+    id: s.id,
+    user_id: userId,
+    date: s.date,
+    total_questions: s.totalQuestions,
+    correct_answers: s.correctAnswers,
+    words_quizzed: s.wordsQuizzed,
+  }),
 };
 
-function read(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function write(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
+const fromDb = {
+  session: (row) => ({
+    id: row.id,
+    date: row.date,
+    topic: row.topic,
+    userText: row.user_text,
+    analysis: row.analysis,
+  }),
+  phrase: (row) => ({
+    id: row.id,
+    sessionId: row.session_id,
+    date: row.date,
+    topic: row.topic,
+    week: row.week,
+    month: row.month,
+    original: row.original,
+    improved: row.improved,
+    explanation: row.explanation,
+    category: row.category,
+    learned: row.learned ?? false,
+  }),
+  patternReport: (row) => ({
+    id: row.id,
+    date: row.date,
+    sessionIds: row.session_ids,
+    week: row.week,
+    report: row.report,
+  }),
+  vocab: (row) => ({
+    id: row.id,
+    german: row.german,
+    english: row.english,
+    article: row.article,
+    plural: row.plural,
+    example: row.example,
+    difficulty: row.difficulty,
+    correctStreak: row.correct_streak ?? 0,
+    lastSeen: row.last_seen,
+    status: row.status,
+    addedDate: row.added_date,
+  }),
+  quizSession: (row) => ({
+    id: row.id,
+    date: row.date,
+    totalQuestions: row.total_questions,
+    correctAnswers: row.correct_answers,
+    wordsQuizzed: row.words_quizzed,
+  }),
+};
 
 // ── Sessions ──────────────────────────────────────────────
-export function getSessions() {
-  return read(KEYS.SESSIONS, []);
+
+export async function getSessions() {
+  const { data, error } = await supabase
+    .from('practice_sessions')
+    .select('*')
+    .order('date', { ascending: true });
+  if (error) throw error;
+  return data.map(fromDb.session);
 }
 
-export function saveSession(session) {
-  const sessions = getSessions();
-  sessions.push(session);
-  write(KEYS.SESSIONS, sessions);
+export async function saveSession(session) {
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from('practice_sessions')
+    .insert(toDb.session(session, userId));
+  if (error) throw error;
 }
 
 // ── Phrases ───────────────────────────────────────────────
-export function getPhrases() {
-  return read(KEYS.PHRASES, []);
+
+export async function getPhrases() {
+  const { data, error } = await supabase
+    .from('phrase_log')
+    .select('*')
+    .order('date', { ascending: true });
+  if (error) throw error;
+  return data.map(fromDb.phrase);
 }
 
-export function savePhrases(newPhrases) {
-  const existing = getPhrases();
-  write(KEYS.PHRASES, [...existing, ...newPhrases]);
+export async function savePhrases(newPhrases) {
+  const userId = await getUserId();
+  const rows = newPhrases.map((p) => toDb.phrase(p, userId));
+  const { error } = await supabase.from('phrase_log').insert(rows);
+  if (error) throw error;
 }
 
-export function updatePhrase(id, updates) {
-  const phrases = getPhrases();
-  write(
-    KEYS.PHRASES,
-    phrases.map((p) => (p.id === id ? { ...p, ...updates } : p))
-  );
+export async function updatePhrase(id, updates) {
+  const dbUpdates = {};
+  if ('learned' in updates) dbUpdates.learned = updates.learned;
+  const { error } = await supabase
+    .from('phrase_log')
+    .update(dbUpdates)
+    .eq('id', id);
+  if (error) throw error;
 }
 
-// ── Settings ──────────────────────────────────────────────
+// ── Pattern reports ───────────────────────────────────────
+
+export async function getPatternReports() {
+  const { data, error } = await supabase
+    .from('pattern_reports')
+    .select('*')
+    .order('date', { ascending: true });
+  if (error) throw error;
+  return data.map(fromDb.patternReport);
+}
+
+export async function savePatternReport(report) {
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from('pattern_reports')
+    .insert(toDb.patternReport(report, userId));
+  if (error) throw error;
+}
+
+// ── Vocab ─────────────────────────────────────────────────
+
+export async function getVocab() {
+  const { data, error } = await supabase
+    .from('vocab_entries')
+    .select('*')
+    .order('added_date', { ascending: true });
+  if (error) throw error;
+  return data.map(fromDb.vocab);
+}
+
+export async function addVocabEntry(entry) {
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from('vocab_entries')
+    .insert(toDb.vocab(entry, userId));
+  if (error) throw error;
+}
+
+export async function insertManyVocabEntries(entries) {
+  const userId = await getUserId();
+  const rows = entries.map((e) => toDb.vocab(e, userId));
+  const { error } = await supabase.from('vocab_entries').insert(rows);
+  if (error) throw error;
+}
+
+export async function updateVocabEntry(id, updates) {
+  const dbUpdates = {};
+  if ('correctStreak' in updates) dbUpdates.correct_streak = updates.correctStreak;
+  if ('lastSeen' in updates) dbUpdates.last_seen = updates.lastSeen;
+  if ('status' in updates) dbUpdates.status = updates.status;
+  if ('german' in updates) dbUpdates.german = updates.german;
+  if ('english' in updates) dbUpdates.english = updates.english;
+  if ('article' in updates) dbUpdates.article = updates.article;
+  if ('plural' in updates) dbUpdates.plural = updates.plural;
+  if ('example' in updates) dbUpdates.example = updates.example;
+  if ('difficulty' in updates) dbUpdates.difficulty = updates.difficulty;
+  const { error } = await supabase
+    .from('vocab_entries')
+    .update(dbUpdates)
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteVocabEntry(id) {
+  const { error } = await supabase
+    .from('vocab_entries')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// ── Quiz sessions ─────────────────────────────────────────
+
+export async function getQuizSessions() {
+  const { data, error } = await supabase
+    .from('quiz_sessions')
+    .select('*')
+    .order('date', { ascending: true });
+  if (error) throw error;
+  return data.map(fromDb.quizSession);
+}
+
+export async function saveQuizSession(session) {
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from('quiz_sessions')
+    .insert(toDb.quizSession(session, userId));
+  if (error) throw error;
+}
+
+// ── Settings (kept in localStorage — only stores non-sensitive prefs) ─────
+// API key is gone. Nothing sensitive lives here any more.
+
 export function getSettings() {
-  return read(KEYS.SETTINGS, {});
+  try {
+    return JSON.parse(localStorage.getItem('dt_settings') || '{}');
+  } catch {
+    return {};
+  }
 }
 
 export function saveSettings(updates) {
   const current = getSettings();
-  write(KEYS.SETTINGS, { ...current, ...updates });
-}
-
-// ── Pattern reports ───────────────────────────────────────
-export function getPatternReports() {
-  return read(KEYS.PATTERN_REPORTS, []);
-}
-
-export function savePatternReport(report) {
-  const reports = getPatternReports();
-  reports.push(report);
-  write(KEYS.PATTERN_REPORTS, reports);
-}
-
-// ── Vocab ─────────────────────────────────────────────────
-export function getVocab() {
-  return read(KEYS.VOCAB, []);
-}
-
-export function saveVocab(entries) {
-  write(KEYS.VOCAB, entries);
-}
-
-export function addVocabEntry(entry) {
-  const vocab = getVocab();
-  vocab.push(entry);
-  write(KEYS.VOCAB, vocab);
-}
-
-export function updateVocabEntry(id, updates) {
-  const vocab = getVocab();
-  write(
-    KEYS.VOCAB,
-    vocab.map((v) => (v.id === id ? { ...v, ...updates } : v))
-  );
-}
-
-export function deleteVocabEntry(id) {
-  const vocab = getVocab();
-  write(KEYS.VOCAB, vocab.filter((v) => v.id !== id));
-}
-
-// ── Quiz sessions ─────────────────────────────────────────
-export function getQuizSessions() {
-  return read(KEYS.QUIZ_SESSIONS, []);
-}
-
-export function saveQuizSession(session) {
-  const sessions = getQuizSessions();
-  sessions.push(session);
-  write(KEYS.QUIZ_SESSIONS, sessions);
+  localStorage.setItem('dt_settings', JSON.stringify({ ...current, ...updates }));
 }
 
 // ── Export / Import ───────────────────────────────────────
-export function exportAllData() {
+
+export async function exportAllData() {
+  const [sessions, phrases, patternReports, vocab, quizSessions] = await Promise.all([
+    getSessions(),
+    getPhrases(),
+    getPatternReports(),
+    getVocab(),
+    getQuizSessions(),
+  ]);
+
   const data = {
     exportedAt: new Date().toISOString(),
-    dt_sessions: read(KEYS.SESSIONS, []),
-    dt_phrases: read(KEYS.PHRASES, []),
-    dt_settings: read(KEYS.SETTINGS, {}),
-    dt_pattern_reports: read(KEYS.PATTERN_REPORTS, []),
-    dt_vocab: read(KEYS.VOCAB, []),
-    dt_quiz_sessions: read(KEYS.QUIZ_SESSIONS, []),
+    dt_sessions: sessions,
+    dt_phrases: phrases,
+    dt_pattern_reports: patternReports,
+    dt_vocab: vocab,
+    dt_quiz_sessions: quizSessions,
   };
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -132,17 +299,44 @@ export function exportAllData() {
   URL.revokeObjectURL(url);
 }
 
-export function importAllData(json) {
+export async function importAllData(json) {
   try {
     const data = typeof json === 'string' ? JSON.parse(json) : json;
-    if (data.dt_sessions !== undefined) write(KEYS.SESSIONS, data.dt_sessions);
-    if (data.dt_phrases !== undefined) write(KEYS.PHRASES, data.dt_phrases);
-    if (data.dt_settings !== undefined) write(KEYS.SETTINGS, data.dt_settings);
-    if (data.dt_pattern_reports !== undefined) write(KEYS.PATTERN_REPORTS, data.dt_pattern_reports);
-    if (data.dt_vocab !== undefined) write(KEYS.VOCAB, data.dt_vocab);
-    if (data.dt_quiz_sessions !== undefined) write(KEYS.QUIZ_SESSIONS, data.dt_quiz_sessions);
+    const userId = await getUserId();
+
+    if (data.dt_sessions?.length) {
+      await supabase.from('practice_sessions').delete().eq('user_id', userId);
+      await supabase.from('practice_sessions').insert(
+        data.dt_sessions.map((s) => toDb.session(s, userId))
+      );
+    }
+    if (data.dt_phrases?.length) {
+      await supabase.from('phrase_log').delete().eq('user_id', userId);
+      await supabase.from('phrase_log').insert(
+        data.dt_phrases.map((p) => toDb.phrase(p, userId))
+      );
+    }
+    if (data.dt_pattern_reports?.length) {
+      await supabase.from('pattern_reports').delete().eq('user_id', userId);
+      await supabase.from('pattern_reports').insert(
+        data.dt_pattern_reports.map((r) => toDb.patternReport(r, userId))
+      );
+    }
+    if (data.dt_vocab?.length) {
+      await supabase.from('vocab_entries').delete().eq('user_id', userId);
+      await supabase.from('vocab_entries').insert(
+        data.dt_vocab.map((v) => toDb.vocab(v, userId))
+      );
+    }
+    if (data.dt_quiz_sessions?.length) {
+      await supabase.from('quiz_sessions').delete().eq('user_id', userId);
+      await supabase.from('quiz_sessions').insert(
+        data.dt_quiz_sessions.map((s) => toDb.quizSession(s, userId))
+      );
+    }
     return true;
-  } catch {
+  } catch (err) {
+    console.error('Import failed:', err);
     return false;
   }
 }
