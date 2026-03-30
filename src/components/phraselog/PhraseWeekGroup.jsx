@@ -19,7 +19,7 @@ function formatWeekLabel(weekKey) {
   return `KW ${weekNum} · ${fmt(monday)} – ${fmt(sunday)} ${year}`;
 }
 
-export default function PhraseWeekGroup({ weekKey, phrases, patternReport, onToggleLearned }) {
+export default function PhraseWeekGroup({ weekKey, phrases, patternReport, onToggleLearned, onAddToVocab }) {
   return (
     <section className="week-group">
       <h2 className="week-heading">{formatWeekLabel(weekKey)}</h2>
@@ -35,7 +35,7 @@ export default function PhraseWeekGroup({ weekKey, phrases, patternReport, onTog
       )}
 
       {phrases.map((p) => (
-        <PhraseEntry key={p.id} phrase={p} onToggleLearned={onToggleLearned} />
+        <PhraseEntry key={p.id} phrase={p} onToggleLearned={onToggleLearned} onAddToVocab={onAddToVocab} />
       ))}
     </section>
   );

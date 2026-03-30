@@ -2,6 +2,7 @@ export default function NavBar({ activeTab, onTabChange, sessionCount }) {
   const tabs = [
     { id: 'practice', label: 'Schreiben' },
     { id: 'phraselog', label: 'Phrasen' },
+    { id: 'vocab', label: 'Vokabeln' },
     { id: 'progress', label: 'Fortschritt' },
   ];
 

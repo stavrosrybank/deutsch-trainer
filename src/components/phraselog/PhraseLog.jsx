@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import PhraseWeekGroup from './PhraseWeekGroup';
 import { getPhrases, getPatternReports, updatePhrase } from '../../services/storage';
 
-export default function PhraseLog() {
+export default function PhraseLog({ onAddToVocab }) {
   const [phrases, setPhrases] = useState(() => getPhrases());
   const [reports] = useState(() => getPatternReports());
 
@@ -48,6 +48,7 @@ export default function PhraseLog() {
           phrases={byWeek[week]}
           patternReport={reportByWeek[week] || null}
           onToggleLearned={handleToggleLearned}
+          onAddToVocab={onAddToVocab}
         />
       ))}
     </div>

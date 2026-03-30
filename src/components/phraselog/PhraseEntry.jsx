@@ -1,4 +1,4 @@
-export default function PhraseEntry({ phrase, onToggleLearned }) {
+export default function PhraseEntry({ phrase, onToggleLearned, onAddToVocab }) {
   const CATEGORY_LABELS = {
     articles: 'Artikel',
     structure: 'Satzstruktur',
@@ -27,12 +27,28 @@ export default function PhraseEntry({ phrase, onToggleLearned }) {
         <span className="phrase-right">✅ {phrase.improved}</span>
       </div>
       <p className="phrase-explanation">{phrase.explanation}</p>
-      <button
-        className={`btn-learned ${phrase.learned ? 'is-learned' : ''}`}
-        onClick={() => onToggleLearned(phrase.id)}
-      >
-        {phrase.learned ? '✓ Gelernt' : 'Als gelernt markieren'}
-      </button>
+      <div className="phrase-actions">
+        <button
+          className={`btn-learned ${phrase.learned ? 'is-learned' : ''}`}
+          onClick={() => onToggleLearned(phrase.id)}
+        >
+          {phrase.learned ? '✓ Gelernt' : 'Als gelernt markieren'}
+        </button>
+        {onAddToVocab && (
+          <button
+            className="btn-add-vocab"
+            onClick={() => onAddToVocab({
+              german: phrase.improved,
+              english: '',
+              example: phrase.improved,
+              difficulty: 'B1',
+            })}
+            title="Zu Vokabeln hinzufügen"
+          >
+            + Vokabel
+          </button>
+        )}
+      </div>
     </div>
   );
 }
