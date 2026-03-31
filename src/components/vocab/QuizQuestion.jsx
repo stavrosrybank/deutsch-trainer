@@ -48,6 +48,9 @@ export default function QuizQuestion({ question, onAnswer }) {
   return (
     <div className="quiz-question">
       <p className="quiz-q-text">{question.question}</p>
+      {question.qType === 'fillblank' && question.english && (
+        <p className="quiz-hint">💡 {question.english}</p>
+      )}
 
       {!submitted ? (
         <form onSubmit={handleSubmit} className="quiz-answer-form">

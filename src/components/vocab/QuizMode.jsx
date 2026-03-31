@@ -31,7 +31,7 @@ export default function QuizMode({ words, onAnswer, onClose, onSessionEnd }) {
     const qType = pickQuestionType(word);
     try {
       const q = await generateQuizQuestion(word, qType);
-      setCurrentQuestion({ ...q, wordId: word.id, qType });
+      setCurrentQuestion({ ...q, wordId: word.id, qType, english: word.english });
     } catch (err) {
       setError(`Fehler beim Laden der Frage: ${err.message}`);
     } finally {
