@@ -138,7 +138,7 @@ export async function quickAddLookup(germanWord) {
 
 export async function importCleanBatch(rawLines) {
   const userContent = `Clean and enrich these German words/phrases:\n${JSON.stringify(rawLines)}`;
-  const raw = await callClaude(HAIKU, IMPORT_CLEAN_SYSTEM_PROMPT, userContent, 4096);
+  const raw = await callClaude(HAIKU, IMPORT_CLEAN_SYSTEM_PROMPT, userContent, 8192);
   return JSON.parse(stripFences(raw));
 }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { importCleanBatch } from '../../services/claude';
 
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 20;
 
 function chunkArray(arr, size) {
   const chunks = [];
