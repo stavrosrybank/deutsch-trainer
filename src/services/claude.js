@@ -40,12 +40,16 @@ const PATTERN_REPORT_SYSTEM_PROMPT = `You are reviewing the last 5 German writin
 
 You will receive a list of corrections from those sessions. Identify the most recurring patterns.
 
-Write a short, encouraging paragraph (3–5 sentences) directly addressing the learner:
-- Name the main recurring challenge (be specific, e.g. "You often place the verb at the end of main clauses — that's a subordinate clause pattern bleeding in")
+Return ONLY valid JSON (no markdown fences, no extra text) in this exact shape:
+{"level": "B1", "report": "..."}
+
+The "report" field: a short, encouraging paragraph (3–5 sentences) directly addressing the learner:
+- Name the main recurring challenge (be specific)
 - Give one or two concrete, actionable suggestions
 - End on an encouraging note
 
-Do NOT return JSON. Return plain text only.`;
+The "level" field: your honest CEFR estimate based on error frequency, error severity, vocabulary range, and sentence complexity.
+Must be one of: A1, A2, B1, B1+, B2, B2+, C1`;
 
 const QUICK_ADD_SYSTEM_PROMPT = `You are a German dictionary assistant. Given a German word or phrase, return a JSON object with these fields:
 - english: English translation
@@ -128,7 +132,8 @@ export async function generatePatternReport(recentSessions) {
     .join('\n');
 
   const userContent = `Here are the corrections from the last ${recentSessions.length} sessions:\n\n${correctionsList || '(No corrections recorded)'}`;
-  return callClaude(SONNET, PATTERN_REPORT_SYSTEM_PROMPT, userContent);
+  const raw = await callClaude(SONNET, PATTERN_REPORT_SYSTEM_PROMPT, userContent);
+  return JSON.parse(stripFences(raw));
 }
 
 export async function quickAddLookup(germanWord) {
@@ -139,6 +144,17 @@ export async function quickAddLookup(germanWord) {
 export async function importCleanBatch(rawLines) {
   const userContent = `Clean and enrich these German words/phrases:\n${JSON.stringify(rawLines)}`;
   const raw = await callClaude(HAIKU, IMPORT_CLEAN_SYSTEM_PROMPT, userContent, 8192);
+  return JSON.parse(stripFences(raw));
+}
+
+const CHECK_ANSWER_SYSTEM_PROMPT = `You are leniently grading a German vocabulary quiz answer.
+Accept as correct: minor typos (1-2 characters off), umlauts or accents omitted (e.g. "Schlussel" for "Schlüssel"), clear synonyms with identical meaning.
+Reject: wrong word, clearly different meaning, answer showing the student doesn't know the vocabulary.
+Return ONLY valid JSON: {"correct": true, "feedback": "one sentence"}`;
+
+export async function checkQuizAnswer(userAnswer, correctAnswer, questionType) {
+  const content = `Question type: ${questionType}\nCorrect answer: "${correctAnswer}"\nStudent's answer: "${userAnswer}"`;
+  const raw = await callClaude(HAIKU, CHECK_ANSWER_SYSTEM_PROMPT, content, 128);
   return JSON.parse(stripFences(raw));
 }
 

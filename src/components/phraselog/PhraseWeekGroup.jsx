@@ -1,5 +1,14 @@
 import PhraseEntry from './PhraseEntry';
 
+function parseReport(raw) {
+  try {
+    const p = JSON.parse(raw);
+    return { level: p.level || null, text: p.text || p.report || raw };
+  } catch {
+    return { level: null, text: raw };
+  }
+}
+
 function formatWeekLabel(weekKey) {
   // weekKey format: "2026-W11"
   const [year, weekPart] = weekKey.split('-W');
@@ -24,15 +33,21 @@ export default function PhraseWeekGroup({ weekKey, phrases, patternReport, onTog
     <section className="week-group">
       <h2 className="week-heading">{formatWeekLabel(weekKey)}</h2>
 
-      {patternReport && (
-        <div className="pattern-report-card">
-          <span className="pattern-report-icon">📊</span>
-          <div>
-            <p className="pattern-report-label">Musterbericht</p>
-            <p className="pattern-report-text">{patternReport.report}</p>
+      {patternReport && (() => {
+        const { level, text } = parseReport(patternReport.report);
+        return (
+          <div className="pattern-report-card">
+            <span className="pattern-report-icon">📊</span>
+            <div className="pattern-report-body">
+              <div className="pattern-report-header">
+                <p className="pattern-report-label">Musterbericht</p>
+                {level && <span className="level-badge">{level}</span>}
+              </div>
+              <p className="pattern-report-text">{text}</p>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {phrases.map((p) => (
         <PhraseEntry key={p.id} phrase={p} onToggleLearned={onToggleLearned} onAddToVocab={onAddToVocab} />

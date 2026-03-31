@@ -67,13 +67,13 @@ export default function Practice() {
       const allSessions = await getSessions();
       if (allSessions.length % 5 === 0 && allSessions.length > 0) {
         const last5 = allSessions.slice(-5);
-        const report = await generatePatternReport(last5);
+        const { level, report } = await generatePatternReport(last5);
         await savePatternReport({
           id: uuid(),
           date: now,
           sessionIds: last5.map((s) => s.id),
           week: getISOWeek(now),
-          report,
+          report: JSON.stringify({ level, text: report }),
         });
       }
 

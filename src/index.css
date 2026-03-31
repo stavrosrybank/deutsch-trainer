@@ -550,17 +550,40 @@ body {
 }
 
 .pattern-report-icon { font-size: 1.3rem; flex-shrink: 0; }
+.pattern-report-body { flex: 1; }
+.pattern-report-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+}
 .pattern-report-label {
   font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-muted);
-  margin-bottom: 0.3rem;
+}
+.level-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 4px;
+  padding: 0.1em 0.45em;
+  letter-spacing: 0.03em;
 }
 .pattern-report-text {
   font-size: 0.9rem;
   line-height: 1.65;
+}
+.quiz-checking {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  padding: 0.4rem 0;
 }
 
 .empty-state {
