@@ -33,6 +33,7 @@ function AppShell() {
     getQuizWords,
     recordQuizSession,
     isDuplicate,
+    cleanupArticles,
     refresh: refreshVocab,
   } = useVocab();
 
@@ -73,6 +74,7 @@ function AppShell() {
             getQuizWords={getQuizWords}
             onSessionEnd={recordQuizSession}
             isDuplicate={isDuplicate}
+            onCleanupArticles={cleanupArticles}
           />
         )}
         {tab === 'progress' && (

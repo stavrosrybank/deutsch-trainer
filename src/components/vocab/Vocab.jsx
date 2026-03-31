@@ -5,7 +5,8 @@ import ImportWizard from './ImportWizard';
 import QuizMode from './QuizMode';
 import QuickAddModal from './QuickAddModal';
 
-export default function Vocab({ vocab, onAddWord, onUpdateWord, onDeleteWord, onAddManyWords, getQuizWords, onSessionEnd, isDuplicate }) {
+export default function Vocab({ vocab, onAddWord, onUpdateWord, onDeleteWord, onAddManyWords, getQuizWords, onSessionEnd, isDuplicate, onCleanupArticles }) {
+  const [cleanupMsg, setCleanupMsg] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -17,6 +18,12 @@ export default function Vocab({ vocab, onAddWord, onUpdateWord, onDeleteWord, on
     (acc, v) => { acc[v.status] = (acc[v.status] || 0) + 1; return acc; },
     {}
   );
+
+  const handleCleanup = async () => {
+    const count = await onCleanupArticles();
+    setCleanupMsg(count > 0 ? `${count} Einträge bereinigt.` : 'Nichts zu bereinigen.');
+    setTimeout(() => setCleanupMsg(''), 3000);
+  };
 
   const handleStartQuiz = () => {
     const words = getQuizWords(10);
@@ -59,6 +66,10 @@ export default function Vocab({ vocab, onAddWord, onUpdateWord, onDeleteWord, on
           <button className="btn-secondary" onClick={() => setShowImport(true)}>
             Importieren
           </button>
+          <button className="btn-ghost" onClick={handleCleanup} title="Doppelte Artikel aus Wörtern entfernen">
+            Bereinigen
+          </button>
+          {cleanupMsg && <span className="cleanup-msg">{cleanupMsg}</span>}
         </div>
       </div>
 

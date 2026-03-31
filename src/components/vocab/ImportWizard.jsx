@@ -2,6 +2,15 @@ import { useState } from 'react';
 import { importCleanBatch } from '../../services/claude';
 
 const BATCH_SIZE = 20;
+const ARTICLES = ['der ', 'die ', 'das '];
+
+function stripLeadingArticle(german) {
+  const lower = (german || '').toLowerCase();
+  for (const art of ARTICLES) {
+    if (lower.startsWith(art)) return german.slice(art.length);
+  }
+  return german;
+}
 
 function chunkArray(arr, size) {
   const chunks = [];
@@ -43,11 +52,14 @@ export default function ImportWizard({ onImport, onClose, isDuplicate }) {
         const cleaned = await importCleanBatch(batches[i]);
         for (const entry of cleaned) {
           const norm = (entry.german || '').toLowerCase().trim();
-          if (norm && !seen.has(norm)) {
-            seen.add(norm);
+          const cleanGerman = stripLeadingArticle(entry.german);
+          const cleanNorm = cleanGerman.toLowerCase().trim();
+          if (cleanNorm && !seen.has(cleanNorm)) {
+            seen.add(cleanNorm);
             allResults.push({
               ...entry,
-              isDupe: isDuplicate(entry.german),
+              german: cleanGerman,
+              isDupe: isDuplicate(cleanGerman),
             });
           }
         }

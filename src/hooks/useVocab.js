@@ -131,6 +131,21 @@ export function useVocab() {
     return session;
   }, []);
 
+  const cleanupArticles = useCallback(async () => {
+    const ARTICLES = ['der ', 'die ', 'das '];
+    const affected = vocab.filter((v) =>
+      ARTICLES.some((art) => v.german.toLowerCase().startsWith(art))
+    );
+    await Promise.all(
+      affected.map((v) => {
+        const art = ARTICLES.find((a) => v.german.toLowerCase().startsWith(a));
+        return updateVocabEntry(v.id, { german: v.german.slice(art.length) });
+      })
+    );
+    if (affected.length) setVocab(await getVocab());
+    return affected.length;
+  }, [vocab]);
+
   // Uses in-memory vocab state
   const isDuplicate = useCallback((germanWord) => {
     const norm = germanWord.toLowerCase().trim();
@@ -148,6 +163,7 @@ export function useVocab() {
     getQuizWords,
     recordQuizSession,
     isDuplicate,
+    cleanupArticles,
     refresh: refreshAll,
   };
 }
